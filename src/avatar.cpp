@@ -42,6 +42,7 @@
 #include "kill_tracker.h"
 #include "make_static.h"
 #include "map.h"
+#include "map_route.h"
 #include "martialarts.h"
 #include "messages.h"
 #include "mission.h"
@@ -185,6 +186,11 @@ size_t avatar::max_memorized_tiles() const
 void avatar::clear_memorized_tile( const tripoint &pos )
 {
     player_map_memory.clear_memorized_tile( pos );
+}
+
+map_route_manager &avatar::get_map_route_manager()
+{
+    return player_map_route_manager;
 }
 
 std::vector<mission *> avatar::get_active_missions() const

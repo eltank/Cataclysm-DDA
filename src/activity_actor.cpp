@@ -360,8 +360,7 @@ void aim_activity_actor::unload_RAS_weapon()
 void autodrive_activity_actor::start( player_activity &act, Character &who )
 {
     const bool in_vehicle = who.in_vehicle && who.controlling_vehicle;
-    const map &here = get_map();
-    const optional_vpart_position vp = here.veh_at( who.pos() );
+    const optional_vpart_position vp = get_map().veh_at( who.pos() );
     if( !( vp && in_vehicle ) ) {
         who.cancel_activity();
         return;
@@ -374,33 +373,28 @@ void autodrive_activity_actor::start( player_activity &act, Character &who )
 
 void autodrive_activity_actor::do_turn( player_activity &act, Character &who )
 {
-    if( who.in_vehicle && who.controlling_vehicle && player_vehicle && player_vehicle->is_autodriving &&
-        !who.omt_path.empty() && !player_vehicle->omt_path.empty() ) {
-        player_vehicle->do_autodrive();
-        if( who.global_omt_location() == who.omt_path.back() ) {
-            who.omt_path.pop_back();
-        }
+    if( who.in_vehicle && who.controlling_vehicle && player_vehicle ) {
         who.moves = 0;
+        switch( player_vehicle->do_autodrive() ) {
+            case autodrive_result::ok:
+                break;
+            case autodrive_result::abort:
+                who.cancel_activity();
+                break;
+            case autodrive_result::finished:
+                act.moves_left = 0;
+                break;
+        }
     } else {
         who.cancel_activity();
-        return;
-    }
-    if( player_vehicle->omt_path.empty() ) {
-        act.moves_left = 0;
     }
 }
 
 void autodrive_activity_actor::canceled( player_activity &act, Character &who )
 {
     who.add_msg_if_player( m_info, _( "Auto-drive canceled." ) );
-    if( player_vehicle && !player_vehicle->omt_path.empty() ) {
-        player_vehicle->omt_path.clear();
-    }
-    if( !who.omt_path.empty() ) {
-        who.omt_path.clear();
-    }
     if( player_vehicle ) {
-        player_vehicle->is_autodriving = false;
+        player_vehicle->stop_autodriving();
     }
     act.set_to_null();
 }
@@ -408,7 +402,7 @@ void autodrive_activity_actor::canceled( player_activity &act, Character &who )
 void autodrive_activity_actor::finish( player_activity &act, Character &who )
 {
     who.add_msg_if_player( m_info, _( "You have reached your destination." ) );
-    player_vehicle->is_autodriving = false;
+    player_vehicle->stop_autodriving();
     act.set_to_null();
 }
 

@@ -19,6 +19,7 @@
 #include "json.h"
 #include "magic_teleporter_list.h"
 #include "map_memory.h"
+#include "map_route.h"
 #include "memory_fast.h"
 #include "player.h"
 #include "point.h"
@@ -109,6 +110,8 @@ class avatar : public player
         /** Returns the amount of tiles survivor can remember. */
         size_t max_memorized_tiles() const;
         void clear_memorized_tile( const tripoint &pos );
+
+        map_route_manager &get_map_route_manager();
 
         nc_color basic_symbol_color() const override;
         int print_info( const catacurses::window &w, int vStart, int vLines, int column ) const override;
@@ -311,6 +314,8 @@ class avatar : public player
         /** Used in max_memorized_tiles to cache memory capacity. **/
         mutable time_point current_map_memory_turn = calendar::before_time_starts;
         mutable size_t current_map_memory_capacity = 0;
+
+        map_route_manager player_map_route_manager;
 
         friend class debug_menu::mission_debug;
         /**

@@ -610,6 +610,12 @@ struct label : public point {
     void serialize( JsonOut &json ) const;
 };
 
+enum class autodrive_result : int {
+    ok,
+    abort,
+    finished
+};
+
 class RemovePartHandler;
 
 /**
@@ -746,6 +752,9 @@ class vehicle
         /** empty the contents of a tank, battery or turret spilling liquids randomly on the ground */
         void leak_fuel( vehicle_part &pt );
 
+        /** stop recording a map route */
+        void stop_recording();
+
         /**
          * Find a possibly off-map vehicle. If necessary, loads up its submap through
          * the global MAPBUFFER and pulls it from there. For this reason, you should only
@@ -865,7 +874,7 @@ class vehicle
         tripoint get_autodrive_target() {
             return autodrive_local_target;
         }
-        void do_autodrive();
+        autodrive_result do_autodrive();
         void stop_autodriving();
         /**
          *  Operate vehicle controls
@@ -2008,6 +2017,12 @@ class vehicle
         mutable bool is_flying = false;
         bool flyable = true;
         int requested_z_change = 0;
+        // whether the vehicle is being used to record a map route
+        bool is_recording = false;
+        // ID of map route being replayed; 0 means none
+        int map_route_id = 0;
+        // amount of progress in replaying the map route
+        int map_route_cursor_pos = 0;
 
     public:
         bool is_on_ramp = false;

@@ -1729,6 +1729,7 @@ bool game::handle_action()
                 break;
 
             case ACTION_CENTER:
+                add_msg( "player at %s", get_map().getabs( get_player_location().pos() ).to_string() );
                 player_character.view_offset.x = driving_view_offset.x;
                 player_character.view_offset.y = driving_view_offset.y;
                 break;

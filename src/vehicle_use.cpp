@@ -439,6 +439,7 @@ void vehicle::control_engines()
 
     if( engines_were_on && !engine_on ) {
         add_msg( _( "You turn off the %s's engines to change their configurations." ), name );
+        stop_recording();
     } else if( !get_player_character().controlling_vehicle ) {
         add_msg( _( "You change the %s's engine configuration." ), name );
     }
@@ -695,6 +696,7 @@ void vehicle::use_controls( const tripoint &pos )
                 }
                 vehicle_noise = 0;
                 engine_on = false;
+                stop_recording();
                 player_character.controlling_vehicle = false;
                 g->setremoteveh( nullptr );
                 sfx::do_vehicle_engine_sfx();
@@ -708,6 +710,7 @@ void vehicle::use_controls( const tripoint &pos )
                 if( engine_on )
                 {
                     engine_on = false;
+                    stop_recording();
                     sounds::sound( pos, 2, sounds::sound_t::movement,
                                    _( "the engine go silent" ) );
                     stop_engines();
@@ -715,6 +718,28 @@ void vehicle::use_controls( const tripoint &pos )
                 {
                     start_engines();
                 }
+                refresh();
+            } );
+        }
+    }
+
+    if( !remote && !is_recording && engine_on && cruise_on && velocity == 0 ) {
+        map_route_manager &route_manager = player_character.get_map_route_manager();
+        std::vector<int> available_routes = route_manager.get_routes_starting_at( *this );
+        if( !available_routes.empty() ) {
+            options.emplace_back( _( "Replay route" ) );
+            actions.push_back( [&, available_routes] {
+                map_route_id = available_routes[0];
+                map_route_cursor_pos = 0;
+                is_autodriving = true;
+                refresh();
+                player_character.assign_activity( player_activity( autodrive_activity_actor() ) );
+            } );
+        } else {
+            options.emplace_back( _( "Record new route" ) );
+            actions.push_back( [&] {
+                is_recording = true;
+                route_manager.record_new_route();
                 refresh();
             } );
         }

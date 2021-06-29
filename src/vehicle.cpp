@@ -768,19 +768,17 @@ void vehicle::stop_autodriving()
     if( !is_autodriving && !is_patrolling && !is_following ) {
         return;
     }
-    if( velocity > 0 ) {
-        if( is_patrolling || is_following ) {
-            autodrive( point( 0, 10 ) );
-        } else {
-            pldrive( point( 0, 10 ) );
-        }
-    }
+    cruise_velocity = 0;
+    cruise_on = true;
     is_autodriving = false;
     is_patrolling = false;
     is_following = false;
     autopilot_on = false;
     autodrive_local_target = tripoint_zero;
     collision_check_points.clear();
+    omt_path.clear();
+    map_route_id = 0;
+    map_route_cursor_pos = 0;
 }
 
 void vehicle::drive_to_local_target( const tripoint &target, bool follow_protocol )
@@ -900,55 +898,93 @@ units::angle vehicle::get_angle_from_targ( const tripoint &targ )
     return units::atan2( crossy, dotx );
 }
 
-void vehicle::do_autodrive()
+static tripoint_abs_ms compute_next_omt_waypoint( tripoint_abs_ms veh_pos,
+        tripoint_abs_omt next_omt )
 {
-    if( omt_path.empty() ) {
-        stop_autodriving();
-    }
-    Character &player_character = get_player_character();
-    map &here = get_map();
-    tripoint vehpos = global_pos3();
-    // TODO: fix point types
-    tripoint_abs_omt veh_omt_pos( ms_to_omt_copy( here.getabs( vehpos ) ) );
-    // we're at or close to the waypoint, pop it out and look for the next one.
-    if( ( is_autodriving && !player_character.omt_path.empty() && !omt_path.empty() ) &&
-        veh_omt_pos == omt_path.back() ) {
-        player_character.omt_path.pop_back();
-        omt_path.pop_back();
-    }
-    if( omt_path.empty() ) {
-        stop_autodriving();
-        return;
-    }
-
-    point_rel_omt omt_diff = omt_path.back().xy() - veh_omt_pos.xy();
-    if( omt_diff.x() > 3 || omt_diff.x() < -3 || omt_diff.y() > 3 || omt_diff.y() < -3 ) {
-        // we've gone walkabout somehow, call off the whole thing
-        stop_autodriving();
-        return;
-    }
+    tripoint_abs_omt veh_omt = project_to<coords::omt>( veh_pos );
+    tripoint_rel_omt omt_diff = next_omt - veh_omt;
     point side;
-    if( omt_diff.x() > 0 ) {
+    if( omt_diff.x() < 0 ) {
         side.x = 2 * SEEX - 1;
-    } else if( omt_diff.x() < 0 ) {
+    } else if( omt_diff.x() > 0 ) {
         side.x = 0;
     } else {
         side.x = SEEX;
     }
-    if( omt_diff.y() > 0 ) {
+    if( omt_diff.y() < 0 ) {
         side.y = 2 * SEEY - 1;
-    } else if( omt_diff.y() < 0 ) {
+    } else if( omt_diff.y() > 0 ) {
         side.y = 0;
     } else {
         side.y = SEEY;
     }
     // get the shared border mid-point of the next path omt
-    tripoint_abs_ms global_a = project_to<coords::ms>( veh_omt_pos );
-    // TODO: fix point types
-    tripoint autodrive_temp_target = ( global_a.raw() + tripoint( side,
-                                       sm_pos.z ) - here.getabs( vehpos ) ) + vehpos;
-    autodrive_local_target = here.getabs( autodrive_temp_target );
-    drive_to_local_target( autodrive_local_target, false );
+    return project_to<coords::ms>( next_omt ) + side;
+}
+
+// normalize given angle to (-180,180] degrees
+static units::angle normalize_angle_delta( units::angle angle )
+{
+    units::angle ret = normalize( angle );
+    return ret > 180_degrees ? ret - 360_degrees : ret;
+}
+
+autodrive_result vehicle::do_autodrive()
+{
+    if( !is_autodriving ) {
+        return autodrive_result::abort;
+    }
+    if( map_route_id == 0 && omt_path.empty() ) {
+        stop_autodriving();
+        return autodrive_result::finished;
+    }
+    if( map_route_id > 0 ) {
+        map_route_manager &route_manager = get_avatar().get_map_route_manager();
+        cata::optional<map_route_driving_data> driving_data = route_manager.get_driving_data( map_route_id,
+                map_route_cursor_pos, *this );
+        if( !driving_data ) {
+            debugmsg("No driving data, aborting");
+            stop_autodriving();
+            return autodrive_result::abort;
+        }
+        if( driving_data->target_speed == 0 ) {
+            stop_autodriving();
+            return autodrive_result::finished;
+        }
+        map_route_cursor_pos = driving_data->cursor_pos;
+        cruise_on = true;
+        // changing cruise_velocity takes 0 time, so need to go through pldrive() for this
+        cruise_velocity = driving_data->target_speed;
+        int turn_delta = std::lround( normalize_angle_delta( driving_data->target_heading - turn_dir ) /
+                                      15_degrees );
+        if( turn_delta != 0 ) {
+            pldrive( { turn_delta, 0 } );
+        }
+    } else {
+        tripoint_abs_ms veh_pos = map_route_manager::vehicle_pos( *this );
+        tripoint_abs_omt veh_omt = project_to<coords::omt>( veh_pos );
+        if( veh_omt == omt_path.back() ) {
+            // we're at or close to the waypoint, pop it out and look for the next one.
+            omt_path.pop_back();
+        }
+        if( omt_path.empty() ) {
+            stop_autodriving();
+            return autodrive_result::finished;
+        }
+        tripoint_abs_ms next_omt_waypoint = compute_next_omt_waypoint( veh_pos, omt_path.back() );
+        if( trig_dist( veh_pos, next_omt_waypoint ) > MAX_VIEW_DISTANCE ) {
+            // we've gone walkabout somehow, call off the whole thing
+            stop_autodriving();
+            return autodrive_result::abort;
+        }
+        autodrive_local_target = next_omt_waypoint.raw();
+        drive_to_local_target( autodrive_local_target, false );
+        // check if drive_to_local_target() bailed out
+        if( !is_autodriving ) {
+            return autodrive_result::abort;
+        }
+    }
+    return autodrive_result::ok;
 }
 
 /**
@@ -5249,8 +5285,18 @@ void vehicle::idle( bool on_map )
     }
 }
 
+struct compact_point_data2 {
+    short x, y, z;
+    short heading_degrees;
+    short target_speed;
+};
+
 void vehicle::on_move()
 {
+    if( is_recording ) {
+        get_avatar().get_map_route_manager().add_recording_data( *this );
+    }
+
     if( has_part( "TRANSFORM_TERRAIN", true ) ) {
         transform_terrain();
     }
@@ -6730,6 +6776,12 @@ int vehicle::damage_direct( int p, int dmg, damage_type type )
     }
 
     return std::max( dres, 0 );
+}
+
+void vehicle::stop_recording()
+{
+    is_recording = false;
+    get_avatar().get_map_route_manager().finish_recording_data( *this );
 }
 
 void vehicle::leak_fuel( vehicle_part &pt )
