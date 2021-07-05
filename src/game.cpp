@@ -7092,8 +7092,7 @@ look_around_result game::look_around( const bool show_window, tripoint &center,
                                       const tripoint &start_point, bool has_first_point, bool select_zone, bool peeking )
 {
     bVMonsterLookFire = false;
-    // TODO: Make this `true`
-    const bool allow_zlev_move = m.has_zlevels() && get_option<bool>( "FOV_3D" );
+    const bool allow_zlev_move = m.has_zlevels();
 
     temp_exit_fullscreen();
 
