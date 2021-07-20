@@ -11,7 +11,7 @@
     "armor_bullet": 5,
     "special_attacks": [ { "type": "bite", "cooldown": 3 } ],
     "regenerates": 10,
-    "extend": { "flags": [ "SLUDGETRAIL", "SLUDGEPROOF" ] }
+    "extend": { "flags": [ "SMALLSLUDGETRAIL", "SLUDGEPROOF" ] }
   },
   {
     "id": "mon_zombie_crawler_pupa",
@@ -42,7 +42,7 @@
     "armor_bullet": 6,
     "special_attacks": [ { "type": "bite", "cooldown": 3 } ],
     "regenerates": 10,
-    "extend": { "flags": [ "SLUDGETRAIL", "SLUDGEPROOF" ] }
+    "extend": { "flags": [ "SMALLSLUDGETRAIL", "SLUDGEPROOF" ] }
   },
   {
     "id": "mon_zombie_pupa",
@@ -75,7 +75,7 @@
     "regenerates": 5,
     "vision_day": 8,
     "vision_night": 15,
-    "extend": { "flags": [ "SLUDGETRAIL", "SLUDGEPROOF", "NIGHT_INVISIBILITY" ] }
+    "extend": { "flags": [ "SMALLSLUDGETRAIL", "SLUDGEPROOF", "NIGHT_INVISIBILITY" ] }
   },
   {
     "id": "mon_zombie_pupa_shady",
