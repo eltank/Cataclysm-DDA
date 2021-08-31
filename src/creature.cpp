@@ -129,7 +129,11 @@ void Creature::setpos( const tripoint &p )
 {
     const tripoint_abs_ms new_abs_pos( get_map().getabs( p ) );
     if( new_abs_pos != abs_position && abs_position.raw() != tripoint_zero ) {
-        facing_dir = direction_from( abs_position.raw().xy(), new_abs_pos.raw().xy() );
+        if( as_character() && !as_character()->is_running() ) {
+            clear_facing_dir();
+        } else {
+            facing_dir = direction_from( abs_position.raw().xy(), new_abs_pos.raw().xy() );
+        }
     }
     position = p;
     abs_position = new_abs_pos;
