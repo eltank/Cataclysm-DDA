@@ -15570,6 +15570,7 @@ void Character::pause()
 {
     moves = 0;
     recoil = MAX_RECOIL;
+    clear_facing_dir();
 
     map &here = get_map();
     // Train swimming if underwater
@@ -15698,6 +15699,7 @@ void Character::pause()
         }
     }
 
+    clear_facing_dir();
     search_surroundings();
     wait_effects();
 }

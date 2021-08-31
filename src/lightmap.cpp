@@ -735,6 +735,12 @@ lit_level map::apparent_light_at( const tripoint &p, const visibility_variables 
     if( cache.clairvoyance_field && field_at( p ).find_field( *cache.clairvoyance_field ) ) {
         return lit_level::BRIGHT;
     }
+    const point delta = p.xy() - player_character.pos().xy();
+    const point facing = direction_XY( player_character.get_facing_dir() );
+    if( delta.x * facing.x + delta.y * facing.y < 0 ) {
+        return lit_level::BLANK;
+    }
+
     const auto &map_cache = get_cache_ref( p.z );
     const apparent_light_info a = apparent_light_helper( map_cache, p );
 

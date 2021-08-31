@@ -110,6 +110,8 @@ Creature::Creature()
     killer = nullptr;
     speed_base = 100;
     underwater = false;
+    abs_position = tripoint_abs_ms( tripoint_zero );
+    facing_dir = direction::CENTER;
 
     Creature::reset_bonuses();
 
@@ -125,7 +127,22 @@ Creature::~Creature() = default;
 
 void Creature::setpos( const tripoint &p )
 {
+    const tripoint_abs_ms new_abs_pos( get_map().getabs( p ) );
+    if( new_abs_pos != abs_position && abs_position.raw() != tripoint_zero ) {
+        facing_dir = direction_from( abs_position.raw().xy(), new_abs_pos.raw().xy() );
+    }
     position = p;
+    abs_position = new_abs_pos;
+}
+
+void Creature::set_facing_dir( direction dir )
+{
+    facing_dir = dir;
+}
+
+void Creature::clear_facing_dir( )
+{
+    facing_dir = direction::CENTER;
 }
 
 std::vector<std::string> Creature::get_grammatical_genders() const

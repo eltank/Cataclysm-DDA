@@ -51,6 +51,7 @@ class time_duration;
 struct point;
 struct tripoint;
 
+enum class direction : unsigned;
 enum class damage_type : int;
 enum m_flag : int;
 struct dealt_projectile_attack;
@@ -287,6 +288,11 @@ class Creature : public location, public viewer
             return position.z;
         }
         void setpos( const tripoint &p ) override;
+        direction get_facing_dir() const {
+            return facing_dir;
+        }
+        void set_facing_dir( direction dir );
+        void clear_facing_dir();
 
         /** Recreates the Creature from scratch. */
         virtual void normalize();
@@ -666,6 +672,10 @@ class Creature : public location, public viewer
     protected:
         /** The creature's position on the local map */
         tripoint position;
+        /** The creature's global position */
+        tripoint_abs_ms abs_position;
+        /** Which way the creature "front" is pointing */
+        direction facing_dir;
         /**anatomy is the plan of the creature's body*/
         anatomy_id creature_anatomy = anatomy_id( "default_anatomy" );
         /**this is the actual body of the creature*/
