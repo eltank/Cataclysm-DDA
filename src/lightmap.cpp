@@ -737,7 +737,7 @@ lit_level map::apparent_light_at( const tripoint &p, const visibility_variables 
     }
     const point delta = p.xy() - player_character.pos().xy();
     const point facing = direction_XY( player_character.get_facing_dir() );
-    if( delta.x * facing.x + delta.y * facing.y < 0 ) {
+    if( delta.x * facing.x + delta.y * facing.y < -0.5 * std::sqrt( delta.x * delta.x + delta.y * delta.y ) ) {
         return lit_level::BLANK;
     }
 
